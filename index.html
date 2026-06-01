@@ -5,30 +5,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CAV Avianca - Business Intelligence Ocupación</title>
     
+    <!-- Librerías Externas -->
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        avianca: '#E11328',
-                        premium: '#1a1a1a',
-                        accent: '#005596'
-                    }
-                }
-            }
-        }
+        // Configuración Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyAYICM3gHJmz4jjbyWggYmP74N29p7cRi0",
+            authDomain: "brigada-cav-av.firebaseapp.com",
+            databaseURL: "https://brigada-cav-av-default-rtdb.firebaseio.com",
+            projectId: "brigada-cav-av",
+            storageBucket: "brigada-cav-av.firebasestorage.app",
+            messagingSenderId: "298922826435",
+            appId: "1:298922826435:web:6601ad95a3f865b7062076"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const registrosRef = database.ref('registros');
+
+        tailwind.config = { theme: { extend: { colors: { avianca: '#E11328', premium: '#1a1a1a', accent: '#005596' } } } }
     </script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
         .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
-        .sidebar-item:hover { background-color: rgba(225, 19, 40, 0.1); color: #E11328; }
         .active-tab { border-bottom: 3px solid #E11328; color: #E11328; }
     </style>
 </head>
@@ -38,444 +44,120 @@
         <div class="max-w-full mx-auto px-6 h-16 flex justify-between items-center">
             <div class="flex items-center space-x-4">
                 <i class="fa-solid fa-building text-avianca text-xl"></i>
-                <div class="h-6 w-px bg-gray-600"></div>
                 <span class="font-light tracking-widest text-sm uppercase">CAV | Gestión de Activos</span>
             </div>
             <div id="nav-controls" class="hidden flex items-center space-x-6">
-                <button onclick="logout()" class="hover:text-avianca transition text-sm font-semibold flex items-center">
-                    <i class="fa-solid fa-power-off mr-2"></i> Cerrar Sesión
+                <button onclick="logout()" class="hover:text-avianca transition text-sm font-semibold">
+                    <i class="fa-solid fa-power-off mr-2"></i> Salir
                 </button>
             </div>
         </div>
     </nav>
 
-    <div id="login-view" class="flex items-center justify-center min-h-[90vh] p-4">
-        <div class="glass-card p-10 rounded-2xl shadow-2xl w-full max-w-md border border-gray-100 text-center">
+    <!-- Login -->
+    <div id="login-view" class="flex items-center justify-center min-h-[80vh] p-4">
+        <div class="glass-card p-10 rounded-2xl shadow-2xl w-full max-w-md text-center border">
             <h1 class="text-3xl font-bold mb-2">Bienvenido</h1>
             <p class="text-slate-500 mb-8">Sistema Integrado de Control Edificio CAV</p>
-            <div class="space-y-4">
-                <button onclick="login('user')" class="w-full bg-avianca hover:bg-red-700 text-white font-bold py-4 rounded-xl shadow-lg transition transform hover:-translate-y-1">
-                    <i class="fa-solid fa-mobile-screen-button mr-2"></i> Registro Colaborador
-                </button>
-                <button onclick="login('admin')" class="w-full bg-premium hover:bg-black text-white font-bold py-4 rounded-xl shadow-lg transition transform hover:-translate-y-1">
-                    <i class="fa-solid fa-chart-line mr-2"></i> Dashboard Ejecutivo
-                </button>
-            </div>
+            <button onclick="login('user')" class="w-full bg-avianca text-white font-bold py-4 rounded-xl mb-4 shadow-lg hover:bg-red-700">Registro Colaborador</button>
+            <button onclick="login('admin')" class="w-full bg-premium text-white font-bold py-4 rounded-xl shadow-lg hover:bg-black">Dashboard Ejecutivo</button>
         </div>
     </div>
 
+    <!-- User Check-in -->
     <div id="user-view" class="hidden max-w-md mx-auto py-8 px-4">
-        <div class="bg-white p-6 rounded-2xl shadow-xl border border-gray-100">
-            <div class="flex items-center space-x-3 mb-6">
-                <div class="bg-avianca/10 p-3 rounded-full text-avianca"><i class="fa-solid fa-user-plus text-xl"></i></div>
-                <div>
-                    <h2 class="font-bold text-xl">Check-in</h2>
-                    <p class="text-xs text-gray-500">Ingreso diario obligatorio</p>
-                </div>
-            </div>
+        <div class="bg-white p-6 rounded-2xl shadow-xl border">
+            <h2 class="font-bold text-xl mb-6">Check-in Diario</h2>
             <form onsubmit="handleRegistration(event)" class="space-y-4">
-                <input type="text" id="nombre" placeholder="Nombre Completo" required class="w-full p-4 bg-gray-50 rounded-xl border border-gray-200 focus:ring-2 focus:ring-avianca outline-none">
-                <input type="number" id="documento" placeholder="ID / Documento" required class="w-full p-4 bg-gray-50 rounded-xl border border-gray-200 focus:ring-2 focus:ring-avianca outline-none">
-                <div class="grid grid-cols-2 gap-4">
-                    <select id="piso" required class="p-4 bg-gray-50 rounded-xl border border-gray-200 focus:ring-2 focus:ring-avianca outline-none">
-                        <option value="" disabled selected>Piso</option>
-                        <option value="1">Piso 1</option>
-                        <option value="2">Piso 2</option>
-                        <option value="3">Piso 3</option>
-                        <option value="4">Piso 4</option>
-                        <option value="5">Piso 5</option>
-                        <option value="6">Piso 6</option>
-                        <option value="7">Piso 7</option>
-                        <option value="8">Piso 8</option>
-                        <option value="9">Piso 9</option>
-                        <option value="10">Piso 10</option>
-                    </select>
-                    <select id="costado" required class="p-4 bg-gray-50 rounded-xl border border-gray-200 focus:ring-2 focus:ring-avianca outline-none">
-                        <option value="" disabled selected>Costado</option>
-                        <option value="Norte">Norte</option>
-                        <option value="Sur">Sur</option>
-                        <option value="Centro">Centro</option>
-                    </select>
-                </div>
-                <div id="msg-container" class="hidden p-3 rounded-lg text-sm text-center"></div>
-                <button type="submit" class="w-full bg-avianca text-white py-4 rounded-xl font-bold shadow-lg hover:bg-red-700 transition">Completar Registro</button>
+                <input type="text" id="nombre" placeholder="Nombre Completo" required class="w-full p-4 bg-gray-50 rounded-xl border">
+                <input type="text" id="documento" placeholder="ID / Documento" required class="w-full p-4 bg-gray-50 rounded-xl border">
+                <select id="piso" required class="w-full p-4 bg-gray-50 rounded-xl border">
+                    <option value="" disabled selected>Piso</option>
+                    <option value="1">Piso 1</option><option value="2">Piso 2</option><option value="3">Piso 3</option>
+                </select>
+                <select id="costado" required class="w-full p-4 bg-gray-50 rounded-xl border">
+                    <option value="" disabled selected>Costado</option>
+                    <option value="Norte">Norte</option><option value="Sur">Sur</option><option value="Centro">Centro</option>
+                </select>
+                <button type="submit" class="w-full bg-avianca text-white py-4 rounded-xl font-bold hover:bg-red-700">Registrar Ingreso</button>
             </form>
+            <div id="msg-container" class="hidden mt-4 p-3 text-center rounded-lg"></div>
         </div>
     </div>
 
-    <div id="admin-view" class="hidden p-6 max-w-[1600px] mx-auto">
+    <!-- Admin Dashboard -->
+    <div id="admin-view" class="hidden p-6 max-w-[1400px] mx-auto">
         <div class="flex space-x-8 mb-8 border-b">
-            <button onclick="switchTab('tab-stats')" id="btn-tab-stats" class="pb-4 font-semibold active-tab transition">Vista General</button>
-            <button onclick="switchTab('tab-reports')" id="btn-tab-reports" class="pb-4 font-semibold text-slate-400 hover:text-avianca transition">Análisis y Reportes</button>
-            <button onclick="switchTab('tab-data')" id="btn-tab-data" class="pb-4 font-semibold text-slate-400 hover:text-avianca transition">Gestión de Datos</button>
+            <button onclick="switchTab('tab-stats')" id="btn-tab-stats" class="pb-4 font-semibold active-tab">Dashboard</button>
+            <button onclick="switchTab('tab-data')" id="btn-tab-data" class="pb-4 font-semibold text-slate-400">Datos</button>
+        </div>
+        
+        <div id="tab-stats" class="tab-content">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-2xl shadow border"><p class="text-xs text-gray-400">Total Hoy</p><h3 id="stat-total" class="text-3xl font-bold">0</h3></div>
+            </div>
+            <canvas id="floorChart" class="bg-white p-6 rounded-2xl shadow"></canvas>
         </div>
 
-        <div id="tab-stats" class="tab-content animate-fade-in">
-            <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest">Ocupación Actual</p>
-                    <h3 id="stat-total" class="text-4xl font-bold text-premium mt-2">0</h3>
-                    <p class="text-xs text-green-500 mt-2 font-medium">Personas en edificio hoy</p>
-                </div>
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest">Densidad Norte</p>
-                    <h3 id="stat-norte" class="text-4xl font-bold text-avianca mt-2">0</h3>
-                    <div class="w-full bg-gray-100 h-1.5 rounded-full mt-4"><div id="bar-norte" class="bg-avianca h-1.5 rounded-full" style="width: 0%"></div></div>
-                </div>
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest">Densidad Sur</p>
-                    <h3 id="stat-sur" class="text-4xl font-bold text-accent mt-2">0</h3>
-                    <div class="w-full bg-gray-100 h-1.5 rounded-full mt-4"><div id="bar-sur" class="bg-accent h-1.5 rounded-full" style="width: 0%"></div></div>
-                </div>
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest">Densidad Centro</p>
-                    <h3 id="stat-centro" class="text-4xl font-bold text-premium mt-2">0</h3>
-                    <div class="w-full bg-gray-100 h-1.5 rounded-full mt-4"><div id="bar-centro" class="bg-premium h-1.5 rounded-full" style="width: 0%"></div></div>
-                </div>
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest">Piso concurrido</p>
-                    <h3 id="stat-top-piso" class="text-4xl font-bold text-gray-800 mt-2">-</h3>
-                    <p class="text-xs text-gray-500 mt-2 italic">Basado en registros de hoy</p>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-                    <h4 class="font-bold text-lg mb-6 flex items-center"><i class="fa-solid fa-layer-group mr-2 text-avianca"></i> Ocupación Detallada por Piso</h4>
-                    <canvas id="floorChart" height="200"></canvas>
-                </div>
-                <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center">
-                    <h4 class="font-bold text-lg mb-6 w-full flex items-center"><i class="fa-solid fa-chart-pie mr-2 text-avianca"></i> Distribución por Costado</h4>
-                    <div class="w-full max-w-[300px]">
-                        <canvas id="sideChart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div id="tab-reports" class="tab-content hidden animate-fade-in">
-            <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-                <div class="mb-8">
-                    <h3 class="text-2xl font-bold">Generación de Reportes</h3>
-                    <p class="text-slate-500">Exporta analítica detallada para gerencia en formato Excel</p>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="border rounded-2xl p-6 hover:border-avianca transition cursor-pointer group bg-gray-50" onclick="exportPro('daily')">
-                        <i class="fa-solid fa-calendar-day text-3xl mb-4 text-gray-400 group-hover:text-avianca"></i>
-                        <h4 class="font-bold text-lg">Reporte Diario</h4>
-                        <p class="text-sm text-gray-500">Consolidado detallado de las últimas 24 horas.</p>
-                        <button class="mt-4 text-avianca font-semibold text-sm"><i class="fa-solid fa-download mr-1"></i> Descargar .xlsx</button>
-                    </div>
-                    <div class="border rounded-2xl p-6 hover:border-avianca transition cursor-pointer group bg-gray-50" onclick="exportPro('weekly')">
-                        <i class="fa-solid fa-calendar-week text-3xl mb-4 text-gray-400 group-hover:text-avianca"></i>
-                        <h4 class="font-bold text-lg">Reporte Semanal</h4>
-                        <p class="text-sm text-gray-500">Análisis de tendencias de los últimos 7 días.</p>
-                        <button class="mt-4 text-avianca font-semibold text-sm"><i class="fa-solid fa-download mr-1"></i> Descargar .xlsx</button>
-                    </div>
-                    <div class="border rounded-2xl p-6 hover:border-avianca transition cursor-pointer group bg-gray-50" onclick="exportPro('monthly')">
-                        <i class="fa-solid fa-calendar-days text-3xl mb-4 text-gray-400 group-hover:text-avianca"></i>
-                        <h4 class="font-bold text-lg">Consolidado Mensual</h4>
-                        <p class="text-sm text-gray-500">Reporte histórico completo para planeación.</p>
-                        <button class="mt-4 text-avianca font-semibold text-sm"><i class="fa-solid fa-download mr-1"></i> Descargar .xlsx</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div id="tab-data" class="tab-content hidden animate-fade-in">
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <div class="p-6 bg-gray-50 border-b flex justify-between items-center">
-                    <h3 class="font-bold text-lg">Base de Datos Central</h3>
-                    <button onclick="deleteAllRecords()" class="bg-red-50 text-red-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-red-600 hover:text-white transition">
-                        <i class="fa-solid fa-eraser mr-2"></i> Borrar Todo
-                    </button>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left">
-                        <thead class="bg-gray-100 text-gray-500 text-xs uppercase tracking-widest">
-                            <tr>
-                                <th class="px-6 py-4">Fecha y Hora</th>
-                                <th class="px-6 py-4">Colaborador</th>
-                                <th class="px-6 py-4">Ubicación</th>
-                                <th class="px-6 py-4 text-center">Acción</th>
-                            </tr>
-                        </thead>
-                        <tbody id="table-body" class="text-sm divide-y divide-gray-100">
-                        </tbody>
-                    </table>
-                    <div id="empty-state" class="hidden p-12 text-center text-gray-400">
-                        <i class="fa-solid fa-database text-4xl mb-4 opacity-20"></i>
-                        <p>No se encontraron registros activos en el sistema.</p>
-                    </div>
-                </div>
-            </div>
+        <div id="tab-data" class="tab-content hidden">
+            <table class="w-full bg-white rounded-2xl shadow text-left">
+                <thead class="bg-gray-50 uppercase text-xs text-gray-500"><tr><th class="px-6 py-4">Nombre</th><th class="px-6 py-4">Piso</th><th class="px-6 py-4">Acción</th></tr></thead>
+                <tbody id="table-body"></tbody>
+            </table>
         </div>
     </div>
 
     <script>
         let db = [];
         let floorChartInstance = null;
-        let sideChartInstance = null;
 
-        // Cargar datos locales al iniciar
-        function loadLocalData() {
-            const storedData = localStorage.getItem('cav_registros_db');
-            if (storedData) {
-                db = JSON.parse(storedData);
-            }
-        }
-        
-        loadLocalData();
+        // Firebase Sync
+        registrosRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            db = data ? Object.values(data) : [];
+            updateDashboard();
+        });
 
-        function saveLocalData() {
-            localStorage.setItem('cav_registros_db', JSON.stringify(db));
-        }
-
-        // Navegación
         function login(role) {
             document.getElementById('login-view').classList.add('hidden');
             document.getElementById('nav-controls').classList.remove('hidden');
-            
-            if (role === 'user') {
-                document.getElementById('user-view').classList.remove('hidden');
-            } else if (role === 'admin') {
-                document.getElementById('admin-view').classList.remove('hidden');
-                setTimeout(() => {
-                    initCharts();
-                    updateDashboard();
-                }, 100);
-            }
+            if (role === 'user') document.getElementById('user-view').classList.remove('hidden');
+            else document.getElementById('admin-view').classList.remove('hidden');
         }
 
-        function logout() {
-            window.location.reload();
-        }
-
-        function switchTab(tabId) {
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-            document.getElementById(tabId).classList.remove('hidden');
-            
-            document.querySelectorAll('[id^="btn-tab-"]').forEach(b => {
-                b.classList.remove('active-tab');
-                b.classList.add('text-slate-400');
-            });
-            document.getElementById('btn-' + tabId).classList.add('active-tab');
-            document.getElementById('btn-' + tabId).classList.remove('text-slate-400');
-        }
-
-        // Registro
         function handleRegistration(e) {
             e.preventDefault();
-            const nombre = document.getElementById('nombre').value;
-            const documento = document.getElementById('documento').value;
-            const piso = document.getElementById('piso').value;
-            const costado = document.getElementById('costado').value;
-            
-            const now = new Date();
-            const hoy = now.toLocaleDateString('es-CO');
-
-            if (db.some(r => r.documento === documento && r.fecha === hoy)) {
-                showMsg('El ID ingresado ya registró su entrada el día de hoy.', 'error');
-                return;
-            }
-
-            const registro = {
-                id: Date.now().toString() + Math.floor(Math.random() * 1000).toString(),
-                nombre: nombre,
-                documento: documento,
-                piso: parseInt(piso),
-                costado: costado,
-                fecha: hoy,
-                hora: now.toLocaleTimeString('es-CO'),
-                timestamp: now.getTime()
+            const id = registrosRef.push().key;
+            const reg = {
+                id: id,
+                nombre: document.getElementById('nombre').value,
+                piso: document.getElementById('piso').value,
+                costado: document.getElementById('costado').value,
+                timestamp: Date.now()
             };
-
-            db.push(registro);
-            saveLocalData();
-            
-            showMsg('¡Registro exitoso! Bienvenido al edificio.', 'success');
+            registrosRef.child(id).set(reg);
+            showMsg('Registro Exitoso', 'success');
             e.target.reset();
         }
 
         function showMsg(txt, type) {
-            const container = document.getElementById('msg-container');
-            container.textContent = txt;
-            container.className = `p-3 rounded-lg text-sm text-center font-bold mt-4 ${type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`;
-            container.classList.remove('hidden');
-            setTimeout(() => container.classList.add('hidden'), 4000);
-        }
-
-        // Gráficos y Dashboard
-        function initCharts() {
-            if (floorChartInstance) floorChartInstance.destroy();
-            if (sideChartInstance) sideChartInstance.destroy();
-
-            const ctxFloor = document.getElementById('floorChart').getContext('2d');
-            floorChartInstance = new Chart(ctxFloor, {
-                type: 'bar',
-                data: {
-                    labels: ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8', 'P9', 'P10'],
-                    datasets: [{
-                        label: 'Personas',
-                        data: Array(10).fill(0),
-                        backgroundColor: '#E11328',
-                        borderRadius: 6
-                    }]
-                },
-                options: { responsive: true, plugins: { legend: { display: false } } }
-            });
-
-            const ctxSide = document.getElementById('sideChart').getContext('2d');
-            sideChartInstance = new Chart(ctxSide, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Norte', 'Sur', 'Centro'],
-                    datasets: [{
-                        data: [0, 0, 0],
-                        backgroundColor: ['#E11328', '#005596', '#1a1a1a'],
-                        borderWidth: 0
-                    }]
-                },
-                options: { responsive: true, cutout: '75%', plugins: { legend: { position: 'bottom' } } }
-            });
+            const msg = document.getElementById('msg-container');
+            msg.textContent = txt;
+            msg.className = `p-3 rounded text-sm ${type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`;
+            msg.classList.remove('hidden');
         }
 
         function updateDashboard() {
-            const hoy = new Date().toLocaleDateString('es-CO');
-            const registrosHoy = db.filter(r => r.fecha === hoy);
-            
-            document.getElementById('stat-total').innerText = registrosHoy.length;
-            
-            const norte = registrosHoy.filter(r => r.costado === 'Norte').length;
-            const sur = registrosHoy.filter(r => r.costado === 'Sur').length;
-            const centro = registrosHoy.filter(r => r.costado === 'Centro').length;
-            
-            document.getElementById('stat-norte').innerText = norte;
-            document.getElementById('stat-sur').innerText = sur;
-            document.getElementById('stat-centro').innerText = centro;
-
-            const total = registrosHoy.length || 1; 
-            document.getElementById('bar-norte').style.width = (norte / total) * 100 + '%';
-            document.getElementById('bar-sur').style.width = (sur / total) * 100 + '%';
-            document.getElementById('bar-centro').style.width = (centro / total) * 100 + '%';
-
-            const floorData = Array(10).fill(0);
-            registrosHoy.forEach(r => {
-                if(r.piso >= 1 && r.piso <= 10) floorData[r.piso - 1]++;
-            });
-            floorChartInstance.data.datasets[0].data = floorData;
-            floorChartInstance.update();
-
-            const maxVal = Math.max(...floorData);
-            const topFloor = maxVal > 0 ? floorData.indexOf(maxVal) + 1 : '-';
-            document.getElementById('stat-top-piso').innerText = maxVal > 0 ? `Piso ${topFloor}` : '-';
-
-            sideChartInstance.data.datasets[0].data = [norte, sur, centro];
-            sideChartInstance.update();
-
-            renderTable();
-        }
-
-        function renderTable() {
             const tbody = document.getElementById('table-body');
-            tbody.innerHTML = '';
-            
-            if(db.length === 0) {
-                document.getElementById('empty-state').classList.remove('hidden');
-                return;
-            }
-            document.getElementById('empty-state').classList.add('hidden');
-
-            const sortedDb = [...db].sort((a,b) => b.timestamp - a.timestamp);
-
-            sortedDb.forEach(r => {
-                let colorClass = 'text-gray-800';
-                if (r.costado === 'Norte') colorClass = 'text-avianca';
-                else if (r.costado === 'Sur') colorClass = 'text-accent';
-                else if (r.costado === 'Centro') colorClass = 'text-premium';
-
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td class="px-6 py-4">
-                        <span class="text-xs font-bold text-gray-400 block">${r.fecha}</span>
-                        <span class="text-sm font-medium text-gray-800">${r.hora}</span>
-                    </td>
-                    <td class="px-6 py-4">
-                        <div class="font-bold text-gray-900">${r.nombre}</div>
-                        <div class="text-xs text-gray-500">ID: ${r.documento}</div>
-                    </td>
-                    <td class="px-6 py-4">
-                        <span class="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs font-bold">Piso ${r.piso}</span>
-                        <span class="ml-2 text-xs font-bold ${colorClass}">${r.costado}</span>
-                    </td>
-                    <td class="px-6 py-4 text-center">
-                        <button onclick="deleteRow('${r.id}')" class="text-gray-400 hover:text-red-600 bg-gray-50 hover:bg-red-50 p-2 rounded-full transition" title="Eliminar registro">
-                            <i class="fa-solid fa-trash-can"></i>
-                        </button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
+            tbody.innerHTML = db.map(r => `<tr><td class="px-6 py-4">${r.nombre}</td><td class="px-6 py-4">${r.piso}</td><td class="px-6 py-4"><button onclick="deleteRow('${r.id}')" class="text-red-500">Eliminar</button></td></tr>`).join('');
+            document.getElementById('stat-total').innerText = db.length;
         }
 
-        function deleteRow(id) {
-            if(confirm('¿Eliminar este registro permanentemente?')) {
-                db = db.filter(r => r.id !== id);
-                saveLocalData();
-                updateDashboard(); 
-            }
-        }
-
-        function deleteAllRecords() {
-            if(db.length === 0) return;
-            if(confirm('¡ATENCIÓN! Se borrarán todos los registros del edificio. ¿Proceder?')) {
-                db = [];
-                localStorage.removeItem('cav_registros_db');
-                updateDashboard(); 
-            }
-        }
-
-        // Exportación a Excel
-        function exportPro(type) {
-            if (db.length === 0) {
-                alert('No hay datos para exportar.');
-                return;
-            }
-
-            let dataToExport = [];
-            const msInDay = 24 * 60 * 60 * 1000;
-            const now = Date.now();
-
-            if (type === 'daily') {
-                dataToExport = db.filter(r => (now - r.timestamp) <= msInDay);
-            } else if (type === 'weekly') {
-                dataToExport = db.filter(r => (now - r.timestamp) <= msInDay * 7);
-            } else {
-                dataToExport = db;
-            }
-
-            if (dataToExport.length === 0) {
-                alert('No hay registros en el periodo seleccionado.');
-                return;
-            }
-
-            const formatted = dataToExport.map(r => ({
-                "FECHA": r.fecha,
-                "HORA": r.hora,
-                "NOMBRE_COLABORADOR": r.nombre,
-                "IDENTIFICACION": r.documento,
-                "PISO": `Piso ${r.piso}`,
-                "COSTADO": r.costado
-            }));
-
-            const ws = XLSX.utils.json_to_sheet(formatted);
-            const wb = XLSX.utils.book_new();
-            
-            ws['!cols'] = [{wch: 12}, {wch: 12}, {wch: 35}, {wch: 20}, {wch: 10}, {wch: 15}];
-            
-            XLSX.utils.book_append_sheet(wb, ws, "Reporte_Ocupacion");
-            const fileName = `CAV_Avianca_${type.toUpperCase()}_Reporte.xlsx`;
-            XLSX.writeFile(wb, fileName);
+        function deleteRow(id) { registrosRef.child(id).remove(); }
+        function logout() { location.reload(); }
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+            document.getElementById(tab).classList.remove('hidden');
         }
     </script>
 </body>
